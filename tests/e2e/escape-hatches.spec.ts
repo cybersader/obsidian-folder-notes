@@ -66,14 +66,16 @@ function runWrap(p: WrapParams): Promise<WrapResult> {
 }
 
 describe('folder-notes escape hatches (file wrapping)', function () {
-  it('BASELINE: with autoCreateForFiles on, a loose file IS wrapped (the bug)', async function () {
+  it('BASELINE: with autoCreateForFiles on, a loose file IS wrapped — but KEEPS its name', async function () {
     const r = await runWrap({
       folderPath: 'W1', fileName: 'provider.md', content: '# Provider',
       autoCreateForFiles: true, ignoreFolderPaths: [], settleMs: 1800,
     });
-    // wrapped away into a new (Untitled) subfolder
+    // It is wrapped (moved into a new folder)…
     expect(r.fileStillThere).toBe(false);
-    expect(r.subfolders.length).toBeGreaterThanOrEqual(1);
+    // …but into a folder named after the FILE, not the old name-losing "Untitled".
+    expect(r.subfolders).toContain('provider');
+    expect(r.subfolders).not.toContain('Untitled');
   });
 
   it('fn-ignore frontmatter blocks wrapping (works for filesystem writes)', async function () {

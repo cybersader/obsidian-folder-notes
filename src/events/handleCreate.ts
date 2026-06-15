@@ -1,4 +1,4 @@
-import { TFolder, TFile, type TAbstractFile } from 'obsidian';
+import { TFolder, TFile, normalizePath, type TAbstractFile } from 'obsidian';
 import type FolderNotesPlugin from 'src/main';
 import {
 	createFolderNote,
@@ -40,7 +40,8 @@ async function handleFileCreation(file: TFile, plugin: FolderNotesPlugin): Promi
 	if (!(folder instanceof TFolder) && plugin.settings.autoCreateForFiles) {
 		if (!file.parent) { return; }
 		if (await shouldSkipFileWrap(plugin, file)) { return; }
-		const newFolder = await plugin.app.fileManager.createNewFolder(file.parent);
+		const newFolder = await createNamedFolderForFile(plugin, file);
+		if (!newFolder) { return; }
 		turnIntoFolderNote(plugin, file, newFolder);
 	} else if (folder instanceof TFolder) {
 		if (folder.children.length >= 1) {
@@ -58,10 +59,35 @@ async function handleFileCreation(file: TFile, plugin: FolderNotesPlugin): Promi
 			if (!plugin.settings.supportedFileTypes.includes(file.extension)) { return; }
 			if (!file.parent) { return; }
 			if (await shouldSkipFileWrap(plugin, file)) { return; }
-			const newFolder = await plugin.app.fileManager.createNewFolder(file.parent);
+			const newFolder = await createNamedFolderForFile(plugin, file);
+			if (!newFolder) { return; }
 			turnIntoFolderNote(plugin, file, newFolder);
 		}
 	}
+}
+
+// cybersader fork: when autoCreateForFiles wraps a loose file, create the new
+// folder named AFTER THE FILE so the folder note keeps the file's name — instead
+// of upstream's generic "Untitled" folder, which discarded the name (turning
+// "Joyful Days.md" into "Untitled/Untitled.md"). Dedups on collision. Returns
+// null if there's no parent or the folder can't be created.
+async function createNamedFolderForFile(plugin: FolderNotesPlugin, file: TFile): Promise<TFolder | null> {
+	const parent = file.parent;
+	if (!parent) return null;
+	const base = parent.path === '' || parent.path === '/' ? '' : `${parent.path}/`;
+	let candidate = normalizePath(`${base}${file.basename}`);
+	let n = 0;
+	while (plugin.app.vault.getAbstractFileByPath(candidate)) {
+		n += 1;
+		candidate = normalizePath(`${base}${file.basename} ${n}`);
+	}
+	try {
+		await plugin.app.vault.createFolder(candidate);
+	} catch {
+		return null;
+	}
+	const created = plugin.app.vault.getAbstractFileByPath(candidate);
+	return created instanceof TFolder ? created : null;
 }
 
 // cybersader fork escape hatches: never auto-wrap a file into a folder note when
