@@ -38,4 +38,5 @@ venv
 
 # cybersader fork: local-only working docs (personal vault context) and tooling
 SYNC_FIX_BRIEF.md
+ESCAPE_HATCHES.md
 *.portagenty.toml

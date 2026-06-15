@@ -12,7 +12,8 @@ import {
 	addCSSClassToFileExplorerEl,
 } from 'src/functions/styleFunctions';
 import { isFileInAttachmentFolder } from '@app/functions/utils';
-import { deferAndShouldSkipAutoCreate } from './syncSafeAutoCreate';
+import { deferAndShouldSkipAutoCreate, isSyncBusy } from './syncSafeAutoCreate';
+import { isIgnored } from '@app/functions/escapeHatches';
 
 export async function handleCreate(file: TAbstractFile, plugin: FolderNotesPlugin): Promise<void> {
 	if (!plugin.app.workspace.layoutReady) return;
@@ -38,6 +39,7 @@ async function handleFileCreation(file: TFile, plugin: FolderNotesPlugin): Promi
 
 	if (!(folder instanceof TFolder) && plugin.settings.autoCreateForFiles) {
 		if (!file.parent) { return; }
+		if (await shouldSkipFileWrap(plugin, file)) { return; }
 		const newFolder = await plugin.app.fileManager.createNewFolder(file.parent);
 		turnIntoFolderNote(plugin, file, newFolder);
 	} else if (folder instanceof TFolder) {
@@ -55,10 +57,22 @@ async function handleFileCreation(file: TFile, plugin: FolderNotesPlugin): Promi
 		} else if (plugin.settings.autoCreateForFiles && !isFileInAttachmentFolder(plugin, file)) {
 			if (!plugin.settings.supportedFileTypes.includes(file.extension)) { return; }
 			if (!file.parent) { return; }
+			if (await shouldSkipFileWrap(plugin, file)) { return; }
 			const newFolder = await plugin.app.fileManager.createNewFolder(file.parent);
 			turnIntoFolderNote(plugin, file, newFolder);
 		}
 	}
+}
+
+// cybersader fork escape hatches: never auto-wrap a file into a folder note when
+// it has opted out (fn-ignore / always-ignore path), its folder is excluded, or
+// Obsidian Sync is mid-transfer (a synced file wrapped mid-sync is what produced
+// the "Untitled" folder-note mess). See src/functions/escapeHatches.ts.
+async function shouldSkipFileWrap(plugin: FolderNotesPlugin, file: TFile): Promise<boolean> {
+	if (await isIgnored(plugin, file)) return true;
+	if (file.parent && getExcludedFolder(plugin, file.parent.path, true)) return true;
+	if (plugin.settings.syncSafeAutoCreate && isSyncBusy(plugin)) return true;
+	return false;
 }
 
 async function handleFolderCreation(folder: TFolder, plugin: FolderNotesPlugin): Promise<void> {

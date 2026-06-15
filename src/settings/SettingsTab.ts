@@ -35,6 +35,9 @@ export interface FolderNotesSettings {
 	syncSafeDiskCheck: boolean;         // adapter.exists() belt for metadata-cache lag
 	syncSafeAutoCreateDelay: number;    // min quiet wait before creating (ms)
 	syncSafeMaxWait: number;            // hard cap on total deferral (ms)
+	// ── cybersader fork: escape hatches (see src/functions/escapeHatches.ts) ──
+	ignoreFrontmatterKey: string;       // a note with `<key>: true` is never wrapped/adopted
+	ignoreFolderPaths: string[];        // files under these paths are never wrapped
 	enableCollapsing: boolean;
 	excludeFolders: (ExcludePattern | ExcludedFolder)[];
 	whitelistFolders: (WhitelistedFolder | WhitelistedPattern)[];
@@ -110,6 +113,8 @@ export const DEFAULT_SETTINGS: FolderNotesSettings = {
 	syncSafeDiskCheck: true,
 	syncSafeAutoCreateDelay: 2500,
 	syncSafeMaxWait: 30000,
+	ignoreFrontmatterKey: 'fn-ignore',
+	ignoreFolderPaths: [],
 	enableCollapsing: false,
 	excludeFolders: [],
 	whitelistFolders: [],

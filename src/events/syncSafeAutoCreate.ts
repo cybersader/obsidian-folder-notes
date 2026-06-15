@@ -173,3 +173,9 @@ function isSyncActivelyTransferring(plugin: FolderNotesPlugin): boolean {
 	if (inst.pause === true) return false; // paused → not transferring
 	return inst.syncing === true;
 }
+
+/** True when Obsidian Sync is present, operational, AND actively transferring.
+ *  Used to hold off file→folder-note wrapping during a sync burst. */
+export function isSyncBusy(plugin: FolderNotesPlugin): boolean {
+	return isSyncStatusUsable(plugin) && isSyncActivelyTransferring(plugin);
+}

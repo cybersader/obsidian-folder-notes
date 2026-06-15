@@ -19,6 +19,50 @@ function clampNumber(value: number, min: number, max: number, fallback: number):
 }
 
 /**
+ * cybersader fork — UI for the escape hatches (src/functions/escapeHatches.ts):
+ * explicit opt-outs that work even for files created outside Obsidian.
+ */
+function renderEscapeHatches(settingsTab: SettingsTab): void {
+	const containerEl = settingsTab.settingsPage;
+	const s = settingsTab.plugin.settings;
+
+	new Setting(containerEl)
+		.setName('Escape hatches')
+		.setDesc('Explicit opt-outs so notes are never auto-wrapped into folder notes — even ones created by scripts, sync, or bulk writes, where no command can be pressed. There are also commands: "Create a plain note in the current folder", "Toggle folder note exclusion for the current folder", and "Toggle auto-create of folder notes".')
+		.setHeading();
+
+	new Setting(containerEl)
+		.setName('Opt-out property')
+		.setDesc('A note whose frontmatter sets this property to true is never turned into, or adopted as, a folder note. For example, add "fn-ignore: true" to a note. Honoured even for files written outside Obsidian.')
+		.addText((text) =>
+			text
+				.setPlaceholder('fn-ignore')
+				.setValue(s.ignoreFrontmatterKey)
+				.onChange(async (value) => {
+					s.ignoreFrontmatterKey = value.trim() || 'fn-ignore';
+					await settingsTab.plugin.saveSettings();
+				}),
+		);
+
+	new Setting(containerEl)
+		.setName('Always-ignore folders')
+		.setDesc('Files created under these folder paths are never auto-wrapped into folder notes. One path per line.')
+		.addTextArea((area) => {
+			area
+				.setPlaceholder('_agent_staging\nTemplates')
+				.setValue((s.ignoreFolderPaths ?? []).join('\n'))
+				.onChange(async (value) => {
+					s.ignoreFolderPaths = value
+						.split('\n')
+						.map((line) => line.trim())
+						.filter((line) => line.length > 0);
+					await settingsTab.plugin.saveSettings();
+				});
+			area.inputEl.rows = 3;
+		});
+}
+
+/**
  * cybersader sync-safe fork — UI for the layered autoCreate guard.
  * Engine: src/events/syncSafeAutoCreate.ts (decision core: autoCreateDecision.ts).
  * Only shown while auto-create is enabled.
@@ -580,6 +624,8 @@ export async function renderGeneral(settingsTab: SettingsTab): Promise<void> {
 					settingsTab.display();
 				}),
 		);
+
+	renderEscapeHatches(settingsTab);
 
 	settingsTab.settingsPage.createEl('h3', { text: 'Integration & compatibility' });
 

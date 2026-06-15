@@ -3,6 +3,7 @@ import {
 	Notice,
 	TFile,
 	Platform,
+	normalizePath,
 	type App,
 	type Menu,
 	type TAbstractFile,
@@ -26,6 +27,8 @@ import {
 	deleteExcludedFolder,
 	getDetachedFolder,
 	getExcludedFolder,
+	getExcludedFolderByPath,
+	addExcludedFolder,
 } from './ExcludeFolders/functions/folderFunctions';
 import {
 	hideFolderNoteInFileExplorer,
@@ -49,6 +52,73 @@ export class Commands {
 	}
 
 	regularCommands(): void {
+		// ── cybersader fork: escape-hatch commands ──────────────────────────
+		this.plugin.addCommand({
+			id: 'create-plain-note-no-folder-note',
+			name: 'Create a plain note in the current folder',
+			callback: async () => {
+				const folder = getFileExplorerActiveFolder(this.plugin)
+					?? this.app.workspace.getActiveFile()?.parent;
+				if (!(folder instanceof TFolder)) {
+					new Notice('Open or select a folder first');
+					return;
+				}
+				const key = (this.plugin.settings.ignoreFrontmatterKey || 'fn-ignore').trim() || 'fn-ignore';
+				const dir = folder.path === '' || folder.path === '/' ? '' : `${folder.path}/`;
+				let n = 0;
+				let path = normalizePath(`${dir}Untitled.md`);
+				while (this.app.vault.getAbstractFileByPath(path)) {
+					n += 1;
+					path = normalizePath(`${dir}Untitled ${n}.md`);
+				}
+				// Stamp the opt-out so the new note is never wrapped into a folder
+				// note, regardless of the auto-create settings on this or any device.
+				const file = await this.app.vault.create(path, `---\n${key}: true\n---\n`);
+				await this.app.workspace.getLeaf(false).openFile(file);
+			},
+		});
+
+		this.plugin.addCommand({
+			id: 'toggle-folder-note-exclusion',
+			name: 'Toggle folder note exclusion for the current folder',
+			checkCallback: (checking: boolean) => {
+				const folder = getFileExplorerActiveFolder(this.plugin)
+					?? this.app.workspace.getActiveFile()?.parent;
+				if (!(folder instanceof TFolder)) return false;
+				if (folder.path === '' || folder.path === '/') return false;
+				if (checking) return true;
+				const existing = getExcludedFolderByPath(this.plugin, folder.path);
+				if (existing && existing.path === folder.path && !existing.detached) {
+					void deleteExcludedFolder(this.plugin, existing);
+					new Notice(`Folder notes re-enabled for "${folder.name}"`);
+				} else if (!existing) {
+					const excluded = new ExcludedFolder(
+						folder.path,
+						this.plugin.settings.excludeFolders.length,
+						undefined,
+						this.plugin,
+					);
+					excluded.subFolders = true;
+					excluded.disableAutoCreate = true;
+					excluded.disableFolderNote = true;
+					addExcludedFolder(this.plugin, excluded);
+					new Notice(`Folder notes disabled for "${folder.name}" and its subfolders`);
+				} else {
+					new Notice('This folder is already covered by a parent exclusion');
+				}
+			},
+		});
+
+		this.plugin.addCommand({
+			id: 'toggle-auto-create-folder-notes',
+			name: 'Toggle auto-create of folder notes',
+			callback: async () => {
+				this.plugin.settings.autoCreate = !this.plugin.settings.autoCreate;
+				await this.plugin.saveSettings();
+				new Notice(`Auto-create of folder notes is now ${this.plugin.settings.autoCreate ? 'on' : 'off'}`);
+			},
+		});
+
 		this.plugin.addCommand({
 			id: 'turn-into-folder-note',
 			name: 'Use this file as the folder note for its parent folder',
