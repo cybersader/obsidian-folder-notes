@@ -19,7 +19,23 @@ main.js
 data.json
 .obsidian
 
+# E2E (wdio-obsidian-service): keep the test-vault's committed config + specs,
+# but ignore downloaded Obsidian builds, the isolated vault copy, run artifacts,
+# and the plugin build copied into the test vault.
+!test-vault/.obsidian/
+test-vault/.obsidian/*
+!test-vault/.obsidian/app.json
+!test-vault/.obsidian/appearance.json
+!test-vault/.obsidian/community-plugins.json
+!test-vault/.obsidian/core-plugins.json
+.obsidian-cache/
+test-results/
+
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
 
 venv
+
+# cybersader fork: local-only working docs (personal vault context) and tooling
+SYNC_FIX_BRIEF.md
+*.portagenty.toml

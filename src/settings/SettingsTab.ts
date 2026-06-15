@@ -26,6 +26,15 @@ export interface FolderNotesSettings {
 	autoCreateForAttachmentFolder: boolean;
 	autoCreateFocusFiles: boolean;
 	autoCreateForFiles: boolean;
+	// ── cybersader sync-safe fork: layered autoCreate guard ──────────────────
+	// See src/events/syncSafeAutoCreate.ts. Each flag is an independent signal so
+	// the safest combination can be chosen/measured.
+	syncSafeAutoCreate: boolean;        // master; false = upstream immediate-create
+	syncSafeEventDriven: boolean;       // the real note's create event cancels the pending create
+	syncSafeUseSyncStatus: boolean;     // hold while Obsidian Sync is actively transferring
+	syncSafeDiskCheck: boolean;         // adapter.exists() belt for metadata-cache lag
+	syncSafeAutoCreateDelay: number;    // min quiet wait before creating (ms)
+	syncSafeMaxWait: number;            // hard cap on total deferral (ms)
 	enableCollapsing: boolean;
 	excludeFolders: (ExcludePattern | ExcludedFolder)[];
 	whitelistFolders: (WhitelistedFolder | WhitelistedPattern)[];
@@ -95,6 +104,12 @@ export const DEFAULT_SETTINGS: FolderNotesSettings = {
 	autoCreateFocusFiles: true,
 	autoCreateForAttachmentFolder: false,
 	autoCreateForFiles: false,
+	syncSafeAutoCreate: true,
+	syncSafeEventDriven: true,
+	syncSafeUseSyncStatus: true,
+	syncSafeDiskCheck: true,
+	syncSafeAutoCreateDelay: 2500,
+	syncSafeMaxWait: 30000,
 	enableCollapsing: false,
 	excludeFolders: [],
 	whitelistFolders: [],

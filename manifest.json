@@ -1,9 +1,9 @@
 {
   "id": "folder-notes",
   "name": "Folder notes",
-  "version": "1.8.26",
+  "version": "1.8.27",
   "minAppVersion": "1.4.10",
-  "description": "Create notes within folders that can be accessed without collapsing the folder, similar to the functionality offered in Notion.",
+  "description": "Create notes within folders that can be accessed without collapsing the folder, similar to the functionality offered in Notion. (cybersader sync-safe fork: prevents autoCreate from blanking folder notes during sync.)",
   "author": "Lost Paul",
   "authorUrl": "https://github.com/LostPaul",
   "fundingUrl": "https://ko-fi.com/paul305844",

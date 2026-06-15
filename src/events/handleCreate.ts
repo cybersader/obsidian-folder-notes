@@ -12,6 +12,7 @@ import {
 	addCSSClassToFileExplorerEl,
 } from 'src/functions/styleFunctions';
 import { isFileInAttachmentFolder } from '@app/functions/utils';
+import { deferAndShouldSkipAutoCreate } from './syncSafeAutoCreate';
 
 export async function handleCreate(file: TAbstractFile, plugin: FolderNotesPlugin): Promise<void> {
 	if (!plugin.app.workspace.layoutReady) return;
@@ -79,6 +80,16 @@ async function handleFolderCreation(folder: TFolder, plugin: FolderNotesPlugin):
 
 	const folderNote = getFolderNote(plugin, folder.path);
 	if (folderNote) return;
+
+	// cybersader sync-safe fork: defer-and-recheck before synthesizing a note,
+	// so a real folder note arriving via sync wins the race instead of being
+	// overwritten by an empty auto-created one. See ./syncSafeAutoCreate.ts.
+	if (await deferAndShouldSkipAutoCreate(plugin, folder.path)) return;
+
+	// Re-validate after the (possibly long) deferral: the folder note may have
+	// appeared, or the folder been removed, between the guard returning and now.
+	if (!(plugin.app.vault.getAbstractFileByPath(folder.path) instanceof TFolder)) return;
+	if (getFolderNote(plugin, folder.path)) return;
 
 	void createFolderNote(plugin, folder.path, openFile, undefined, true);
 	addCSSClassToFileExplorerEl(folder.path, 'has-folder-note', false, plugin);

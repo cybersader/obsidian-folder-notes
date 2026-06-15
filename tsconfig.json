@@ -26,6 +26,11 @@
   "include": [
     "**/*.ts"
   ],
+  "exclude": [
+    "node_modules",
+    "tests",
+    ".obsidian-cache"
+  ],
   "types": [
     "obsidian-typings"
   ]

@@ -13,6 +13,105 @@ import RenameFolderNotesModal from './modals/RenameFns';
 
 let debounceTimer: number | undefined;
 
+function clampNumber(value: number, min: number, max: number, fallback: number): number {
+	if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
+	return Math.min(max, Math.max(min, value));
+}
+
+/**
+ * cybersader sync-safe fork — UI for the layered autoCreate guard.
+ * Engine: src/events/syncSafeAutoCreate.ts (decision core: autoCreateDecision.ts).
+ * Only shown while auto-create is enabled.
+ */
+function renderSyncSafety(settingsTab: SettingsTab): void {
+	const containerEl = settingsTab.settingsPage;
+	const s = settingsTab.plugin.settings;
+
+	new Setting(containerEl)
+		.setName('Sync safety')
+		.setDesc('Avoid blanking folder notes when a sync engine delivers a folder before its note. Waits for the real note (or for sync to settle) before auto-creating an empty one.')
+		.setHeading();
+
+	new Setting(containerEl)
+		.setName('Protect against sync races')
+		.setDesc('Master switch. Turn off to auto-create immediately, like the original plugin (not recommended when using sync).')
+		.addToggle((toggle) =>
+			toggle
+				.setValue(s.syncSafeAutoCreate)
+				.onChange(async (value) => {
+					s.syncSafeAutoCreate = value;
+					await settingsTab.plugin.saveSettings();
+					settingsTab.display();
+				}),
+		);
+
+	if (!s.syncSafeAutoCreate) return;
+
+	new Setting(containerEl)
+		.setName('Cancel on incoming note')
+		.setDesc('If the real folder note arrives first (e.g. from sync), skip auto-creating an empty one. The strongest, sync-engine-agnostic signal.')
+		.addToggle((toggle) =>
+			toggle
+				.setValue(s.syncSafeEventDriven)
+				.onChange(async (value) => {
+					s.syncSafeEventDriven = value;
+					await settingsTab.plugin.saveSettings();
+				}),
+		);
+
+	new Setting(containerEl)
+		.setName('Wait for Obsidian Sync to settle')
+		.setDesc('Hold off auto-creating while Obsidian Sync is actively transferring. Closes the race window for Obsidian Sync; ignored for other sync engines.')
+		.addToggle((toggle) =>
+			toggle
+				.setValue(s.syncSafeUseSyncStatus)
+				.onChange(async (value) => {
+					s.syncSafeUseSyncStatus = value;
+					await settingsTab.plugin.saveSettings();
+				}),
+		);
+
+	new Setting(containerEl)
+		.setName('Double-check on disk')
+		.setDesc('Also verify on disk whether the note exists, in case the in-memory cache has not caught up yet.')
+		.addToggle((toggle) =>
+			toggle
+				.setValue(s.syncSafeDiskCheck)
+				.onChange(async (value) => {
+					s.syncSafeDiskCheck = value;
+					await settingsTab.plugin.saveSettings();
+				}),
+		);
+
+	new Setting(containerEl)
+		.setName('Minimum wait before auto-create')
+		.setDesc('How long to stay quiet before auto-creating a folder note, in milliseconds.')
+		.addSlider((slider) =>
+			slider
+				.setLimits(0, 10000, 250)
+				.setValue(clampNumber(s.syncSafeAutoCreateDelay, 0, 10000, 2500))
+				.setDynamicTooltip()
+				.onChange(async (value) => {
+					s.syncSafeAutoCreateDelay = value;
+					await settingsTab.plugin.saveSettings();
+				}),
+		);
+
+	new Setting(containerEl)
+		.setName('Maximum wait')
+		.setDesc('Hard limit on how long to defer before giving up and auto-creating, in milliseconds. Bounds the wait for genuinely empty folders.')
+		.addSlider((slider) =>
+			slider
+				.setLimits(1000, 60000, 1000)
+				.setValue(clampNumber(s.syncSafeMaxWait, 1000, 60000, 30000))
+				.setDynamicTooltip()
+				.onChange(async (value) => {
+					s.syncSafeMaxWait = value;
+					await settingsTab.plugin.saveSettings();
+				}),
+		);
+}
+
 // eslint-disable-next-line complexity
 export async function renderGeneral(settingsTab: SettingsTab): Promise<void> {
 	const containerEl = settingsTab.settingsPage;
@@ -465,6 +564,8 @@ export async function renderGeneral(settingsTab: SettingsTab): Promise<void> {
 						settingsTab.display();
 					}),
 			);
+
+		renderSyncSafety(settingsTab);
 	}
 
 	new Setting(containerEl)

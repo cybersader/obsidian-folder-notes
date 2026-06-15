@@ -1,4 +1,16 @@
-# Obsidian folder notes
+# Obsidian folder notes — cybersader sync-safe fork
+
+> **This is a fork of [LostPaul/obsidian-folder-notes](https://github.com/LostPaul/obsidian-folder-notes).**
+> It adds a **sync-safe auto-create guard** that prevents folder notes from being
+> silently blanked when a sync engine (Obsidian Sync, LiveSync, Syncthing…) delivers
+> a folder *before* its note. When auto-create fires on the synced folder, the guard
+> waits for the real note (via its create event, an Obsidian-Sync-idle signal, and a
+> disk check) instead of immediately writing an empty note that races — and can lose
+> to — the inbound one. Configurable under **Settings → Folder notes → Sync safety**.
+> Plugin id stays `folder-notes` so it replaces the store version. Install via BRAT.
+>
+> All credit for the plugin itself goes to Lost Paul; this fork only hardens the
+> auto-create path. Licensed GPL-3.0-or-later, same as upstream.
 
 Folder notes is a plugin for the note taking app  [Obsidian](https://obsidian.md/) that lets you attach notes to folders so that you can click on the name of a folder to open the note like in the app [Notion](https://www.notion.so/).
 This plugin has some unique features that separate it from similar "Folder note" plugins like opening folder notes through the path, creating folder notes for every existing folder, templater/template support and more.
