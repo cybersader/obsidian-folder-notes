@@ -52,4 +52,37 @@ describe('Sync safety settings UI', function () {
     // Close the settings modal so it doesn't bleed into other specs.
     await browser.executeObsidian(({ app }: any) => app.setting.close());
   });
+
+  it('still renders the section (greyed) when auto-create is off — verifiable on any device', async function () {
+    await browser.executeObsidian(async ({ app }: any) => {
+      const plugin = app.plugins.plugins['folder-notes'];
+      plugin.settings.autoCreate = false; // section must still appear, just disabled
+      if (typeof plugin.saveSettings === 'function') await plugin.saveSettings();
+      app.setting.open();
+      app.setting.openTabById('folder-notes');
+    });
+
+    await browser.pause(600);
+
+    const found = await browser.executeObsidian(() => {
+      const rows = Array.from(document.querySelectorAll('.setting-item'));
+      const masterRow = rows.find((r) => (r.querySelector('.setting-item-name')?.textContent || '').trim() === 'Protect against sync races');
+      const heading = Array.from(document.querySelectorAll('.setting-item-heading')).find((e) => (e.textContent || '').includes('Sync safety'));
+      (heading as HTMLElement | undefined)?.scrollIntoView({ block: 'start' });
+      return {
+        hasHeading: !!heading,
+        hasMaster: !!masterRow,
+        masterDisabled: masterRow?.classList.contains('is-disabled') ?? false,
+      };
+    });
+
+    await browser.pause(300);
+    await browser.saveScreenshot('./test-results/settings-sync-safety-greyed.png');
+
+    expect(found.hasHeading).toBe(true);   // section still present when auto-create off
+    expect(found.hasMaster).toBe(true);
+    expect(found.masterDisabled).toBe(true); // but greyed / disabled
+
+    await browser.executeObsidian(({ app }: any) => app.setting.close());
+  });
 });

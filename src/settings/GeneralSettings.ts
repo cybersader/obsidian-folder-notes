@@ -65,15 +65,21 @@ function renderEscapeHatches(settingsTab: SettingsTab): void {
 /**
  * cybersader sync-safe fork — UI for the layered autoCreate guard.
  * Engine: src/events/syncSafeAutoCreate.ts (decision core: autoCreateDecision.ts).
- * Only shown while auto-create is enabled.
+ * Always rendered so the fork is verifiable on every device; controls are greyed
+ * when "auto-create on folder creation" is off, since the guard only runs then.
  */
 function renderSyncSafety(settingsTab: SettingsTab): void {
 	const containerEl = settingsTab.settingsPage;
 	const s = settingsTab.plugin.settings;
 
+	const autoCreateOn = s.autoCreate;
+	const subDisabled = !autoCreateOn || !s.syncSafeAutoCreate;
+
 	new Setting(containerEl)
 		.setName('Sync safety')
-		.setDesc('Avoid blanking folder notes when a sync engine delivers a folder before its note. Waits for the real note (or for sync to settle) before auto-creating an empty one.')
+		.setDesc(autoCreateOn
+			? 'Avoid blanking folder notes when a sync engine delivers a folder before its note. Waits for the real note (or for sync to settle) before auto-creating an empty one.'
+			: 'Active only when "Auto-create on folder creation" (above) is on. Shown here, greyed, so you can still confirm the sync-safe fork is installed.')
 		.setHeading();
 
 	new Setting(containerEl)
@@ -87,9 +93,8 @@ function renderSyncSafety(settingsTab: SettingsTab): void {
 					await settingsTab.plugin.saveSettings();
 					settingsTab.display();
 				}),
-		);
-
-	if (!s.syncSafeAutoCreate) return;
+		)
+		.setDisabled(!autoCreateOn);
 
 	new Setting(containerEl)
 		.setName('Cancel on incoming note')
@@ -101,7 +106,8 @@ function renderSyncSafety(settingsTab: SettingsTab): void {
 					s.syncSafeEventDriven = value;
 					await settingsTab.plugin.saveSettings();
 				}),
-		);
+		)
+		.setDisabled(subDisabled);
 
 	new Setting(containerEl)
 		.setName('Wait for Obsidian Sync to settle')
@@ -113,7 +119,8 @@ function renderSyncSafety(settingsTab: SettingsTab): void {
 					s.syncSafeUseSyncStatus = value;
 					await settingsTab.plugin.saveSettings();
 				}),
-		);
+		)
+		.setDisabled(subDisabled);
 
 	new Setting(containerEl)
 		.setName('Double-check on disk')
@@ -125,7 +132,8 @@ function renderSyncSafety(settingsTab: SettingsTab): void {
 					s.syncSafeDiskCheck = value;
 					await settingsTab.plugin.saveSettings();
 				}),
-		);
+		)
+		.setDisabled(subDisabled);
 
 	new Setting(containerEl)
 		.setName('Minimum wait before auto-create')
@@ -139,7 +147,8 @@ function renderSyncSafety(settingsTab: SettingsTab): void {
 					s.syncSafeAutoCreateDelay = value;
 					await settingsTab.plugin.saveSettings();
 				}),
-		);
+		)
+		.setDisabled(subDisabled);
 
 	new Setting(containerEl)
 		.setName('Maximum wait')
@@ -153,7 +162,8 @@ function renderSyncSafety(settingsTab: SettingsTab): void {
 					s.syncSafeMaxWait = value;
 					await settingsTab.plugin.saveSettings();
 				}),
-		);
+		)
+		.setDisabled(subDisabled);
 }
 
 // eslint-disable-next-line complexity
@@ -609,8 +619,9 @@ export async function renderGeneral(settingsTab: SettingsTab): Promise<void> {
 					}),
 			);
 
-		renderSyncSafety(settingsTab);
 	}
+
+	renderSyncSafety(settingsTab);
 
 	new Setting(containerEl)
 		.setName('Auto-create when creating notes')
